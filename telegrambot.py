@@ -10,7 +10,7 @@ from PIL import Image
 
 
 TOKEN = 'YOUR_TOKEN'
-MODEL_PATH = 'NSFWai.pt'
+MODEL_PATH = 'NSFW-AI-v0.1.pt'
 CONFIDENCE_THRESHOLD = 0.60
 LOG_FILE = "detect_logs.txt"
 FORBIDDEN_LABELS = ['nsfw']
