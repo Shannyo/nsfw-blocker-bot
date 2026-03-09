@@ -1,26 +1,24 @@
 import asyncio
 import io
 import logging
-import os
+import sys
 from datetime import datetime, timedelta, timezone
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from ultralytics import YOLO
 from PIL import Image
-import nest_asyncio
 
-nest_asyncio.apply()
-TOKEN = 'YOUR_TOKEN' 
+
+TOKEN = 'YOUR_TOKEN'
 MODEL_PATH = 'NSFWai.pt'
-CONFIDENCE_THRESHOLD = 0.60 
+CONFIDENCE_THRESHOLD = 0.60
 LOG_FILE = "detect_logs.txt"
-FORBIDDEN_LABELS = ['nsfw'] 
+FORBIDDEN_LABELS = ['nsfw']
 MSK = timezone(timedelta(hours=3))
-bot = Bot(token=TOKEN)
-dp = Dispatcher()
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+
 def get_msk_time():
     return datetime.now(MSK)
-
 def log_to_file(username, class_name, confidence):
     now = get_msk_time()
     timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
@@ -28,25 +26,24 @@ def log_to_file(username, class_name, confidence):
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(log_entry)
         f.flush()
-
 try:
     model = YOLO(MODEL_PATH)
     print(f"Model loaded. Classes: {model.names}")
 except Exception as e:
-    print(f"Error: {e}")
+    print(f"Error loading model: {e}")
+    sys.exit(1)
+dp = Dispatcher()
 
 @dp.message(F.photo)
-async def handle_photo(message: Message):
+async def handle_photo(message: Message, bot: Bot):
     try:
         photo = message.photo[-1]
-        file_info = await bot.get_file(photo.file_id)
-        downloaded_file = await bot.download_file(file_info.file_path)
-        
-        image = Image.open(io.BytesIO(downloaded_file.read()))
-        
+        file_io = await bot.download(photo)
+
+        image = Image.open(file_io)
         results = model(image, verbose=False)
         result = results[0]
-        
+
         top_idx = result.probs.top1
         class_name = result.names[top_idx].lower().strip()
         confidence = float(result.probs.top1conf.item())
@@ -56,30 +53,40 @@ async def handle_photo(message: Message):
 
         if class_name in FORBIDDEN_LABELS and confidence >= CONFIDENCE_THRESHOLD:
             log_to_file(message.from_user.username, class_name, confidence)
-            
+
             try:
                 await message.delete()
                 print(f"DELETED")
             except Exception as e:
                 print(f"Delete failed: {e}")
-            
+
             warn = await message.answer(
                 f"**{message.from_user.first_name}**, NSFW detected. Removed.",
                 parse_mode="Markdown"
             )
             await asyncio.sleep(5)
             await warn.delete()
-            
-    except Exception as e:
-        print(f"Error: {e}")
 
-async def run_bot():
+    except Exception as e:
+        print(f"Error in handle_photo: {e}")
+
+async def main():
+    bot = Bot(token=TOKEN)
     print("="*30)
     print("BOT STARTED")
     print(f"Logs: {LOG_FILE}")
     print("="*30)
-    
     await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await bot.session.close()
 
-await run_bot()
+if __name__ == "__main__":
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        print("Bot stopped.")
