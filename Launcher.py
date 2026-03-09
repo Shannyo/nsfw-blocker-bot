@@ -7,7 +7,6 @@ from aiogram import Bot, Dispatcher, F, types
 from ultralytics import YOLO
 from PIL import Image
 
-# --- КОНФИГУРАЦИЯ ---
 BG_COLOR = "#0F0F0F"
 CARD_BG = "#161616"
 ACCENT = "#D32F2F" 
@@ -22,7 +21,6 @@ class NSFWLauncher:
         self.bot_task = None
         self.last_read_line = 0 
         
-        # ОЧИСТКА ЛОГОВ ПРИ ЗАПУСКЕ ПРОГРАММЫ
         try:
             with open(LOG_FILE, "w", encoding="utf-8") as f:
                 f.write(f"--- New Logs: {datetime.now(MSK).strftime('%Y-%m-%d %H:%M:%S')} ---\n")
@@ -119,7 +117,22 @@ class NSFWLauncher:
         page.window.width, page.window.height = 900, 500
         page.window.resizable = False
         
+        # Надежная настройка путей для иконки
+        base_path = os.getcwd()
+        page.assets_dir = os.path.join(base_path, "assets")
+        icon_path = os.path.join(base_path, "assets", "logo.png")
+        
+        if os.path.exists(icon_path):
+            page.window.icon = icon_path
+
         CENTER = ft.Alignment(0, 0)
+
+        logo_img = ft.Image(
+            src="logo.png", 
+            width=36, 
+            height=36, 
+            fit="contain"
+        )
 
         saved_token = self.load_config()
         self.token_input = ft.TextField(
@@ -172,7 +185,10 @@ class NSFWLauncher:
 
         page.add(ft.Row([
             ft.Container(expand=1, padding=30, content=ft.Column([
-                ft.Row([ft.Text("NSFW-blocker-bot", size=24, weight="bold")]),
+                ft.Row([
+                    logo_img,
+                    ft.Text("NSFW-blocker-bot", size=24, weight="bold")
+                ], vertical_alignment=ft.CrossAxisAlignment.CENTER),
                 ft.Divider(height=10, color="transparent"),
                 self.token_input,
                 ft.Container(height=15),
