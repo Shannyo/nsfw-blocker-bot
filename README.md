@@ -8,9 +8,9 @@ This project is a Python Telegram bot designed to moderate NSFW content in chats
 
 Install these libraries via console for the code to work:
 ```
-pip install -U aiogram ultralytics pillow nest_asyncio
+pip install flet aiogram ultralytics pillow
 ```
 or for Google Colab:
 ```
-!pip install -U aiogram ultralytics pillow nest_asyncio
+!pip install flet aiogram ultralytics pillow
 ```
